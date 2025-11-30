@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <title>Firebase Messenger</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 0; padding: 0;
+      background: #121212; color: #eee;
+    }
+    #chat {
+      max-width: 600px; margin: auto; padding: 20px;
+    }
+    input, button {
+      padding: 10px; margin: 5px 0; border-radius: 8px;
+      border: none; outline: none;
+    }
+    input { width: 100%; }
+    button { background: #1e88e5; color: white; cursor: pointer; }
+    .message {
+      background: #1f1f1f; border-radius: 12px;
+      padding: 10px; margin: 5px 0;
+    }
+    .me { background: #2e7d32; }
+  </style>
+</head>
+<body>
+  <div id="chat">
+    <h2>💬 Messenger</h2>
+    <input id="username" placeholder="Dein Benutzername">
+    <input id="chatWith" placeholder="Mit wem chatten? (Benutzername)">
+    <div id="messages"></div>
+    <input id="messageInput" placeholder="Nachricht eingeben (mit Emojis 😎🔥😂)">
+    <button id="sendBtn">Senden</button>
+  </div>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore.js"></script>
+
+  <script>
+    // 111 → Hier deine Firebase Config einfügen
+    const firebaseConfig = { apiKey: "AIzaSyC1IzFjIvC3o23-q6FPcFOT5TDDx51GOz0", authDomain: "jo-messanger.firebaseapp.com", projectId: "jo-messanger", storageBucket: "jo-messanger.firebasestorage.app", messagingSenderId: "182395045254", appId: "1:182395045254:web:6155dff7f56ba0cf60d807" };
+
+    const app = firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    const usernameInput = document.getElementById("username");
+    const chatWithInput = document.getElementById("chatWith");
+    const messageInput = document.getElementById("messageInput");
+    const sendBtn = document.getElementById("sendBtn");
+    const messagesDiv = document.getElementById("messages");
+
+    let unsubscribe = null;
+
+    // Chat starten mit bestimmtem Benutzer
+    chatWithInput.addEventListener("change", () => {
+      if (unsubscribe) unsubscribe(); // alten Listener beenden
+      const chatWith = chatWithInput.value;
+      const myUser = usernameInput.value;
+
+      unsubscribe = db.collection("messages")
+        .where("participants", "array-contains", myUser)
+        .orderBy("timestamp")
+        .onSnapshot(snapshot => {
+          messagesDiv.innerHTML = "";
+          snapshot.forEach(doc => {
+            const data = doc.data();
+            if (data.participants.includes(chatWith)) {
+              const div = document.createElement("div");
+              div.className = "message" + (data.user === myUser ? " me" : "");
+              div.textContent = data.user + ": " + data.text;
+              messagesDiv.appendChild(div);
+            }
+          });
+        });
+    });
+
+    // Nachricht senden
+    sendBtn.onclick = () => {
+      const user = usernameInput.value || "Gast";
+      const chatWith = chatWithInput.value;
+      const text = messageInput.value;
+      if (text.trim() !== "" && chatWith.trim() !== "") {
+        db.collection("messages").add({
+          user: user,
+          text: text,
+          participants: [user, chatWith],
+          timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        messageInput.value = "";
+      }
+    };
+  </script>
+</body>
+</html>
